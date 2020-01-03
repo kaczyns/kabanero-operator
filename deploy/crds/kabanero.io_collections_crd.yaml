@@ -51,6 +51,8 @@ spec:
                 type: string
               repositoryUrl:
                 type: string
+              skipCertVerification:
+                type: boolean
               version:
                 type: string
               versions:
@@ -62,6 +64,8 @@ spec:
                       type: string
                     repositoryUrl:
                       type: string
+                    skipCertVerification:
+                      type: boolean
                     version:
                       type: string
                   type: object
@@ -228,6 +232,8 @@ spec:
                       type: string
                     repositoryUrl:
                       type: string
+                    skipCertVerification:
+                      type: boolean
                     version:
                       type: string
                   type: object

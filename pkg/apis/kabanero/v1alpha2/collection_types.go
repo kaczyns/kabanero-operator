@@ -30,6 +30,7 @@ type CollectionVersion struct {
 	RepositoryUrl string `json:"repositoryUrl,omitempty"`
 	Version       string `json:"version,omitempty"`
 	DesiredState  string `json:"desiredState,omitempty"`
+	SkipCertVerification bool `json:"skipCertVerification,omitempty"`
 }
 
 // PipelineStatus defines the observed state of the assets located within a single pipeline .tar.gz.
