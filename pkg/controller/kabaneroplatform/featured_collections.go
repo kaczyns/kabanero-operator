@@ -19,6 +19,17 @@ func reconcileFeaturedCollections(ctx context.Context, k *kabanerov1alpha1.Kaban
 		return err
 	}
 
+	// Make a list of all the Collections currently defined in the cluster.
+	definedCollections := &kabanerov1alpha1.CollectionList{}
+	err = cl.List(ctx, definedCollections, client.InNamespace(k.GetNamespace()))
+	if err != nil {
+		return err
+	}
+	definedCollectionMap := make(map[string]bool)
+	for _, collection := range(definedCollections.Items) {
+		definedCollectionMap[collection.Name] = true
+	}
+	
 	// Each key is a collection id.  Get that Collection CR instance and see if the versions are set correctly.
 	for key, value := range collectionMap {
 		updateCollection := utils.Update
@@ -61,16 +72,28 @@ func reconcileFeaturedCollections(ctx context.Context, k *kabanerov1alpha1.Kaban
 			if (len(collectionResource.Spec.Versions) == 0) && (len(collectionResource.Spec.Version) != 0) {
 				collectionResource.Spec.Versions = []kabanerov1alpha1.CollectionVersion{{RepositoryUrl: collectionResource.Spec.RepositoryUrl, Version: collectionResource.Spec.Version, DesiredState: collectionResource.Spec.DesiredState}}
 			}
+
+			// Remove all versions of the collection that don't have desired state set (desired state indicates that
+			// the CLI performed some manual action, which we don't want to undo here).
+			newCollectionVersions := []kabanerov1alpha1.CollectionVersion{}
+			for _, collectionVersion := range collectionResource.Spec.Versions {
+				if len(collectionVersion.DesiredState) > 0 {
+					newCollectionVersions = append(newCollectionVersions, collectionVersion)
+				}
+			}
+			collectionResource.Spec.Versions = newCollectionVersions
 		}
 
 		// Add each version to the versions array if it's not already there.  If it's already there, just
-		// update the repository URL, don't touch the desired state.
+		// update the repository URL (but only if the desired state is empty).
 		for _, collection := range value {
 			foundVersion := false
 			for _, collectionVersion := range collectionResource.Spec.Versions {
 				if collectionVersion.Version == collection.Version {
 					foundVersion = true
-					collectionVersion.RepositoryUrl = collection.RepositoryUrl
+					if len(collectionVersion.DesiredState) == 0 {
+						collectionVersion.RepositoryUrl = collection.RepositoryUrl
+					}
 				}
 			}
 
@@ -79,13 +102,64 @@ func reconcileFeaturedCollections(ctx context.Context, k *kabanerov1alpha1.Kaban
 			}
 		}
 
+		// Sync up the singleton version and the first member of the versions array.
+		collectionResource.Spec.Version = collectionResource.Spec.Versions[0].Version
+		collectionResource.Spec.DesiredState = collectionResource.Spec.Versions[0].DesiredState
+		collectionResource.Spec.RepositoryUrl = collectionResource.Spec.Versions[0].RepositoryUrl
+
 		// Update the CR instance with the new version information.
 		err = updateCollection(cl, ctx, collectionResource)
 		if err != nil {
 			return err
 		}
+
+		// Take it out of the defined collection map - we've already processed this one.
+		delete(definedCollectionMap, key)
 	}
 
+	// For any collections that were not currently in the collection hub, remove any that were not
+	// manually activated or deactivated.
+	for collectionName, _ := range definedCollectionMap {
+		name := types.NamespacedName{
+			Name:      collectionName,
+			Namespace: k.GetNamespace(),
+		}
+
+		collectionResource := &kabanerov1alpha1.Collection{}
+		err = cl.Get(ctx, name, collectionResource)
+		if err == nil {
+			// First, sync up the singleton version and version array if they are not already sync'd up.
+			if (len(collectionResource.Spec.Versions) == 0) && (len(collectionResource.Spec.Version) != 0) {
+				collectionResource.Spec.Versions = []kabanerov1alpha1.CollectionVersion{{RepositoryUrl: collectionResource.Spec.RepositoryUrl, Version: collectionResource.Spec.Version, DesiredState: collectionResource.Spec.DesiredState}}
+			}
+
+			// Now, iterate over the versions, removing those that are not manually activated or deactivated.
+			manualVersions := []kabanerov1alpha1.CollectionVersion{}
+			for _, version := range collectionResource.Spec.Versions {
+				if len(version.DesiredState) > 0 {
+					manualVersions = append(manualVersions, version)
+				}
+			}
+
+			// If we're left with no collections, delete the collection.  Otherwise, update the versions array.
+			if len(manualVersions) > 0 {
+				collectionResource.Spec.Versions = manualVersions
+				collectionResource.Spec.Version = collectionResource.Spec.Versions[0].Version
+				collectionResource.Spec.DesiredState = collectionResource.Spec.Versions[0].DesiredState
+				collectionResource.Spec.RepositoryUrl = collectionResource.Spec.Versions[0].RepositoryUrl
+				err = utils.Update(cl, ctx, collectionResource)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = cl.Delete(ctx, collectionResource)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	
 	return nil
 }
 
@@ -104,13 +178,8 @@ func featuredCollections(k *kabanerov1alpha1.Kabanero) (map[string][]kabanerov1a
 			return nil, err
 		}
 
-		desiredState := kabanerov1alpha1.CollectionDesiredStateActive
-		if r.ActivateDefaultCollections == false {
-			desiredState = kabanerov1alpha1.CollectionDesiredStateInactive
-		}
-		
 		for _, c := range index.Collections {
-			collectionMap[c.Id] = append(collectionMap[c.Id], kabanerov1alpha1.CollectionVersion{RepositoryUrl: r.Url, Version: c.Version, DesiredState: desiredState})
+			collectionMap[c.Id] = append(collectionMap[c.Id], kabanerov1alpha1.CollectionVersion{RepositoryUrl: r.Url, Version: c.Version})
 		}		
 	}
 
