@@ -2,6 +2,10 @@ language: go
 go:
   - 1.13
 
+arch:
+  - amd64
+  - ppc64le
+
 services:
   - docker
 
@@ -10,8 +14,9 @@ env:
   - RELEASE_VERSION=v0.16.0
 
 before_install:
-- curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
-- chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu && sudo cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+- export UNAME_ARCH=`uname -m`
+- curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu
+- chmod +x operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu && sudo cp operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu /usr/local/bin/operator-sdk && rm operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu
 - mkdir -p ${HOME}/gopath/src/github.com/kabanero-io/kabanero-operator
 - rsync -az ${TRAVIS_BUILD_DIR}/ $HOME/gopath/src/github.com/kabanero-io/kabanero-operator
 - export TRAVIS_BUILD_DIR=$HOME/gopath/src/github.com/kabanero-io/kabanero-operator
