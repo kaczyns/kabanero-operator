@@ -100,7 +100,11 @@ build-image: generate
 	mkdir -p build/registry
 	cp LICENSE build/registry/LICENSE
 	cp -R registry/manifests build/registry/
+ifdef TRAVIS
+	cp registry/release-Dockerfile build/registry/Dockerfile
+else
 	cp registry/Dockerfile build/registry/Dockerfile
+endif
 	cp deploy/crds/kabanero.io_kabaneros_crd.yaml deploy/crds/kabanero.io_collections_crd.yaml deploy/crds/kabanero.io_stacks_crd.yaml build/registry/manifests/kabanero-operator/$(CURRENT_RELEASE)/
 
 ifdef INTERNAL_REGISTRY

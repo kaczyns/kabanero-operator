@@ -19,6 +19,11 @@ before_install:
 - chmod +x operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu && sudo cp operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu /usr/local/bin/operator-sdk && rm operator-sdk-${RELEASE_VERSION}-${UNAME_ARCH}-linux-gnu
 - mkdir -p ${HOME}/gopath/src/github.com/kabanero-io/kabanero-operator
 - rsync -az ${TRAVIS_BUILD_DIR}/ $HOME/gopath/src/github.com/kabanero-io/kabanero-operator
+- curl -OJL https://github.com/operator-framework/operator-registry/archive/v1.5.6.tar.gz
+- tar -xzf ./operator-registry-1.5.6.tar.gz -C ${HOME}
+- cd ${HOME}/operator-registry-1.5.6
+- sed -e 's!v0.2.1!v0.3.2!' upstream-builder.Dockerfile | sed -e 's!amd64!$(go env GOARCH)!' > kabanero-builder.Dockerfile
+- docker build -f kabanero-builder.Dockerfile -t operator-registry . 
 - export TRAVIS_BUILD_DIR=$HOME/gopath/src/github.com/kabanero-io/kabanero-operator
 - cd ${HOME}/gopath/src/github.com/kabanero-io/kabanero-operator
 - if [ ! -z ${DOCKER_USERNAME} ]; then docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD || true; fi
