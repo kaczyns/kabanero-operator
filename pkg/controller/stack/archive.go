@@ -53,7 +53,7 @@ func DownloadToByte(c client.Client, namespace string, url string, gitRelease ka
 		archiveBytes = bytes
 	// HTTPS:
 	case len(url) != 0:
-		bytes, err := getFromCache(url, false)
+		bytes, err := getFromCache(url, false, "")
 		if err != nil {
 			return nil, err
 		}

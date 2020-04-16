@@ -43,7 +43,7 @@ var cacheLock sync.Mutex
 // Returns the requested resource, either from the cache, or from the
 // remote server.  The cache is not meant to be a "high performance" or
 // "heavily concurrent" cache.
-func getFromCache(url string, skipCertVerify bool) ([]byte, error) {
+func getFromCache(url string, skipCertVerify bool, oauthToken string) ([]byte, error) {
 
 	// Build the request.
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -61,6 +61,11 @@ func getFromCache(url string, skipCertVerify bool) ([]byte, error) {
 		req.Header.Add("If-Modified-Since", cacheData.date)
 	}
 
+	if len(oauthToken) != 0 {
+		fmt.Println(" !!TDK adding auth header to request, token %v\n", oauthToken)
+		req.Header.Add("Authorization", "Bearer " + oauthToken)
+	}
+	
 	// Drive the request. Certificate validation is not disabled by default.
 	transport := &http.Transport{DisableCompression: true}
 	if skipCertVerify {

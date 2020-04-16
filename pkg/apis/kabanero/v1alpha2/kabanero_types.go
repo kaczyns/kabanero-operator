@@ -71,6 +71,7 @@ type PipelineSpec struct {
 type HttpsProtocolFile struct {
 	Url                  string `json:"url,omitempty"`
 	SkipCertVerification bool   `json:"skipCertVerification,omitempty"`
+	OpenShiftOAuth       bool   `json:"oauth,omitempty"`
 }
 
 // TriggerSpec defines the sets of default triggers for the stacks

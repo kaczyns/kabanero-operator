@@ -87,6 +87,8 @@ spec:
                           description: HttpsProtocolFile defines how to retrieve a
                             file over https
                           properties:
+                            oauth:
+                              type: boolean
                             skipCertVerification:
                               type: boolean
                             url:

@@ -1,12 +1,15 @@
 package stack
 
 import (
+	//"encoding/base64"
 	"fmt"
 	"regexp"
 
 	"github.com/go-logr/logr"
 	kabanerov1alpha2 "github.com/kabanero-io/kabanero-operator/pkg/apis/kabanero/v1alpha2"
+	"github.com/kabanero-io/kabanero-operator/pkg/controller/utils"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -24,7 +27,7 @@ func ResolveIndex(c client.Client, repoConf kabanerov1alpha2.RepositoryConfig, n
 		indexBytes = bytes
 	// HTTPS:
 	case len(repoConf.Https.Url) != 0:
-		bytes, err := getStackIndexUsingHttp(repoConf)
+		bytes, err := getStackIndexUsingHttp(c, repoConf, reqLogger)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +119,7 @@ func SearchStack(stackName string, index *Index) ([]Stack, error) {
 }
 
 // Retrieves a stack index file content using HTTP.
-func getStackIndexUsingHttp(repoConf kabanerov1alpha2.RepositoryConfig) ([]byte, error) {
+func getStackIndexUsingHttp(c client.Client, repoConf kabanerov1alpha2.RepositoryConfig, reqLogger logr.Logger) ([]byte, error) {
 	url := repoConf.Https.Url
 
 	// user may specify url to yaml file or directory
@@ -128,5 +131,46 @@ func getStackIndexUsingHttp(repoConf kabanerov1alpha2.RepositoryConfig) ([]byte,
 		url = url + "/index.yaml"
 	}
 
-	return getFromCache(url, repoConf.Https.SkipCertVerification)
+	var oauthToken string
+	
+	// check to see if we should use oauth.  If so, need to get our service account token.
+	if repoConf.Https.OpenShiftOAuth == true {
+		secret, err := utils.GetMatchingSecret(c, "kabanero", serviceAccountTokenSecretFilter)
+		if err != nil {
+			return nil, err
+		}
+
+		token, ok := secret.Data["token"]
+		if ok == false {
+			return nil, fmt.Errorf("Matching secret %v did not contain a token", secret.Name)
+		}
+
+		/* 
+		fmt.Printf(" !!TDK retrieved token string from secret: %v\n", string(token))
+		token, err = base64.StdEncoding.DecodeString(string(token))
+		if err != nil {
+			return nil, err
+		}
+    */
+		oauthToken = string(token)
+		fmt.Printf(" !!TDK retrieved token from the secret: %v\n", oauthToken)
+	}
+	
+	return getFromCache(url, repoConf.Https.SkipCertVerification, oauthToken)
+}
+
+// Find the secret with our service account token.
+func serviceAccountTokenSecretFilter(secretList *corev1.SecretList, filterStrings ...string) (*corev1.Secret, error) {
+	for _, secret := range secretList.Items {
+		annotations := secret.GetAnnotations()
+		for key, value := range annotations {
+			if (key == "kubernetes.io/service-account.name") && (value == "kabanero-operator") {
+				if secret.Type == "kubernetes.io/service-account-token" {
+					return &secret, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("Unable to find matching secret")
 }
