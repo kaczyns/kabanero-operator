@@ -118,6 +118,9 @@ oc delete -f $KABANERO_CUSTOMRESOURCES_YAML --ignore-not-found --selector kabane
 # Delete service account to used by events
 oc delete -f $KABANERO_CUSTOMRESOURCES_YAML --ignore-not-found --selector kabanero.io/install=26-events-sa,kabanero.io/namespace!=true
 
+# Delete role used by stack controller to query ingress certificates
+oc delete -f $KABANERO_CUSTOMRESOURCES_YAML --ignore-not-found --selector kabanero.io/install=27-ingress-role,kabanero.io/namespace!=true
+
 # CRDs still exist
 if [ `oc get crds kabaneros.kabanero.io --no-headers --ignore-not-found | wc -l` -gt 0 ] ; then 
 

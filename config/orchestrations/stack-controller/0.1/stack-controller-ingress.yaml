@@ -1,0 +1,16 @@
+# This role lets the stack controller query secrets in the 
+# openshift ingress namespace, so that we can read the
+# default ingress certificate.
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .name }}
+  namespace: openshift-ingress-operator
+subjects:
+- kind: ServiceAccount
+  name: kabanero-operator-stack-controller
+  namespace: {{ .kabaneroNamespace }}
+roleRef:
+  kind: Role
+  name: kabanero-stack-ingress-role
+  apiGroup: rbac.authorization.k8s.io

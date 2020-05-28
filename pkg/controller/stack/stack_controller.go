@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -21,6 +20,7 @@ import (
 	kabanerov1alpha2 "github.com/kabanero-io/kabanero-operator/pkg/apis/kabanero/v1alpha2"
 	sutils "github.com/kabanero-io/kabanero-operator/pkg/controller/stack/utils"
 	cutils "github.com/kabanero-io/kabanero-operator/pkg/controller/utils"
+	"github.com/kabanero-io/kabanero-operator/pkg/controller/utils/cache"
 	"github.com/kabanero-io/kabanero-operator/pkg/controller/utils/secret"
 
 	"github.com/docker/docker/registry"
@@ -475,11 +475,11 @@ func retrieveImageDigest(c client.Client, namespace string, imgRegistry string, 
 		return "", err
 	}
 
+	// Drive the request. Certificate validation is not disabled by default.
+	// Ignore the error from TLS config - if nil comes back, use the default.
 	transport := &http.Transport{}
-	if skipCertVerification {
-		tlsConf := &tls.Config{InsecureSkipVerify: skipCertVerification}
-		transport.TLSClientConfig = tlsConf
-	}
+	tlsConfig, _ := cache.GetTLSCConfig(c, skipCertVerification, logr)
+	transport.TLSClientConfig = tlsConfig
 
 	img, err := remote.Image(ref,
 		remote.WithAuth(authenticator),

@@ -468,3 +468,19 @@ subjects:
 - kind: ServiceAccount
   name: event-listener
   namespace: kabanero
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kabanero-stack-ingress-role
+  namespace: openshift-ingress-operator
+  labels:
+    kabanero.io/install: 27-ingress-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list

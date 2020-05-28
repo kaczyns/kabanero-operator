@@ -101,6 +101,31 @@ func reconcileStackController(ctx context.Context, k *kabanerov1alpha2.Kabanero,
 		return err
 	}
 
+	// Create a role and role binding in the openshift-ingress-operator namespace
+	// so that we can read the certificates for the default ingress.
+	templateCtx["name"] = "kabanero-" + k.GetNamespace() + "-stack-ingress-rolebinding"
+	templateCtx["kabaneroNamespace"] = k.GetNamespace()
+
+	f, err = rev.OpenOrchestration("stack-controller-ingress.yaml")
+	if err != nil {
+		return err
+	}
+
+	s, err = renderOrchestration(f, templateCtx)
+	if err != nil {
+		return err
+	}
+
+	mOrig, err = mf.ManifestFrom(mf.Reader(strings.NewReader(s)), mf.UseClient(mfc.NewClient(c)), mf.UseLogger(logger.WithName("manifestival")))
+	if err != nil {
+		return err
+	}
+
+	err = mOrig.Apply()
+	if err != nil {
+		return err
+	}
+	
 	return nil
 }
 
@@ -173,6 +198,29 @@ func cleanupStackController(ctx context.Context, k *kabanerov1alpha2.Kabanero, c
 		return err
 	}
 
+	templateCtx["name"] = "kabanero-" + k.GetNamespace() + "-stack-ingress-rolebinding"
+	templateCtx["kabaneroNamespace"] = k.GetNamespace()
+
+	f, err = rev.OpenOrchestration("stack-controller-ingress.yaml")
+	if err != nil {
+		return err
+	}
+
+	s, err = renderOrchestration(f, templateCtx)
+	if err != nil {
+		return err
+	}
+
+	m, err = mf.ManifestFrom(mf.Reader(strings.NewReader(s)), mf.UseClient(mfc.NewClient(c)), mf.UseLogger(logger.WithName("manifestival")))
+	if err != nil {
+		return err
+	}
+
+	err = m.Delete()
+	if err != nil {
+		return err
+	}
+	
 	return nil
 }
 

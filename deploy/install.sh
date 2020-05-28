@@ -340,6 +340,9 @@ oc apply -f $KABANERO_CUSTOMRESOURCES_YAML --selector kabanero.io/install=25-tri
 # Create service account to used by pipelines
 oc apply -f $KABANERO_CUSTOMRESOURCES_YAML --selector kabanero.io/install=26-events-sa
 
+# Create role used by stack controller to query ingress certificates
+oc apply -f $KABANERO_CUSTOMRESOURCES_YAML --selector kabanero.io/install=27-ingress-role
+
 # Install complete.  give instructions for how to create an instance.
 SAMPLE_KAB_INSTANCE_URL="${SAMPLE_KAB_INSTANCE_URL:-https://github.com/kabanero-io/kabanero-operator/releases/download/${RELEASE}/default.yaml}"
 
